@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberLab CTF</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --panel: #0d1520;
+    --border: #1a3a5c;
+    --accent: #00e5ff;
+    --green: #00ff88;
+    --red: #ff3a5c;
+    --yellow: #ffd600;
+    --dim: #1e3a5a;
+    --text: #c8e0f0;
+    --muted: #4a7a9b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+  .login-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 40px 44px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(0,229,255,0.06);
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .login-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-align: center;
+    margin-bottom: 4px;
+    text-shadow: 0 0 20px rgba(0,229,255,0.4);
+  }
+  .login-logo span { color: var(--green); }
+  .login-subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    letter-spacing: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 32px;
+  }
+  .login-field { margin-bottom: 18px; }
+  .login-label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  .login-input {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 11px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .login-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(0,229,255,0.15); }
+  .login-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: linear-gradient(135deg, #005577, #003344);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 12px;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .login-btn:hover { background: linear-gradient(135deg, #0077aa, #004466); box-shadow: 0 0 20px rgba(0,229,255,0.25); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-error {
+    margin-top: 12px;
+    background: rgba(255,58,92,0.1);
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--red);
+    display: none;
+  }
+  .login-note {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(13,21,32,0.97);
+    backdrop-filter: blur(10px);
+  }
+  .logo { font-family: 'Orbitron', monospace; font-size: 1.3rem; font-weight: 900; color: var(--accent); letter-spacing: 3px; text-shadow: 0 0 20px rgba(0,229,255,0.4); }
+  .logo span { color: var(--green); }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .user-pill {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: rgba(0,229,255,0.05);
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .user-pill strong { color: var(--text); }
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+  .score-display { font-family: 'Orbitron', monospace; font-size: 1rem; color: var(--yellow); text-shadow: 0 0 10px rgba(255,214,0,0.3); }
+  .progress-bar-wrap { width: 160px; height: 5px; background: var(--dim); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--accent)); border-radius: 3px; transition: width 0.5s ease; box-shadow: 0 0 8px rgba(0,255,136,0.5); }
+
+  /* ── MAIN ── */
+  .container { position: relative; z-index: 5; max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+  .intro-banner {
+    background: linear-gradient(135deg, rgba(0,229,255,0.06), rgba(0,255,136,0.03));
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 24px;
+    margin-bottom: 28px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .intro-icon { font-size: 1.8rem; line-height: 1; }
+  .intro-text h2 { font-family: 'Orbitron', monospace; font-size: 0.85rem; color: var(--accent); margin-bottom: 4px; letter-spacing: 2px; }
+  .intro-text p { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
+
+  /* Tabs */
+  .category-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; letter-spacing: 1px; }
+  .tab:hover, .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.07); box-shadow: 0 0 10px rgba(0,229,255,0.12); }
+
+  /* Cards */
+  .challenges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+  .challenge-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: all 0.25s; cursor: pointer; position: relative; }
+  .challenge-card:hover { border-color: var(--accent); box-shadow: 0 0 18px rgba(0,229,255,0.1), 0 4px 20px rgba(0,0,0,0.4); transform: translateY(-2px); }
+  .challenge-card.solved { border-color: var(--green); background: rgba(0,255,136,0.03); }
+  .challenge-card.solved::after { content: '✓ ATRISINĀTS'; position: absolute; top: 10px; right: 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.66rem; color: var(--green); background: rgba(0,255,136,0.1); border: 1px solid var(--green); padding: 2px 7px; border-radius: 3px; }
+  .card-header { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+  .card-icon { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+  .card-meta { flex: 1; }
+  .card-category { font-family: 'Share Tech Mono', monospace; font-size: 0.64rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+  .card-title { font-family: 'Orbitron', monospace; font-size: 0.88rem; color: var(--text); font-weight: 700; line-height: 1.3; }
+  .card-body { padding: 12px 18px 14px; }
+  .card-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .difficulty { display: flex; gap: 3px; }
+  .diff-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+  .diff-dot.active.easy { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .diff-dot.active.medium { background: var(--yellow); box-shadow: 0 0 5px var(--yellow); }
+  .diff-dot.active.hard { background: var(--red); box-shadow: 0 0 5px var(--red); }
+  .points-badge { font-family: 'Orbitron', monospace; font-size: 0.82rem; font-weight: 700; color: var(--yellow); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(4,8,16,0.92); backdrop-filter: blur(8px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-top: 2px solid var(--accent); border-radius: 10px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.8); animation: slideIn 0.22s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(18px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .modal-header { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .modal-icon { font-size: 1.8rem; }
+  .modal-title-wrap { flex: 1; }
+  .modal-category { font-family: 'Share Tech Mono', monospace; font-size: 0.64rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+  .modal-title { font-family: 'Orbitron', monospace; font-size: 1rem; color: var(--accent); font-weight: 700; }
+  .modal-close { background: none; border: 1px solid var(--border); color: var(--muted); width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+  .modal-body { padding: 18px 22px; }
+  .task-description { font-size: 0.87rem; line-height: 1.7; color: var(--text); margin-bottom: 16px; }
+  .task-scenario { background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.13); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; font-size: 0.83rem; color: var(--text); line-height: 1.6; }
+  .task-scenario strong { color: var(--accent); font-family: 'Share Tech Mono', monospace; }
+  .code-block { background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 6px; padding: 13px 15px; margin: 10px 0; font-family: 'Share Tech Mono', monospace; font-size: 0.79rem; color: var(--green); line-height: 1.6; overflow-x: auto; white-space: pre; }
+  .hint-section { margin-bottom: 18px; }
+  .hint-toggle { background: none; border: 1px dashed var(--border); color: var(--muted); padding: 7px 14px; border-radius: 4px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.74rem; letter-spacing: 1px; transition: all 0.2s; margin-bottom: 7px; }
+  .hint-toggle:hover { border-color: var(--yellow); color: var(--yellow); }
+  .hint-content { display: none; background: rgba(255,214,0,0.04); border: 1px solid rgba(255,214,0,0.18); border-radius: 6px; padding: 11px 13px; font-size: 0.81rem; color: #a09050; line-height: 1.6; }
+  .hint-content.visible { display: block; }
+  .flag-input-row { display: flex; gap: 10px; margin-top: 18px; }
+  .flag-input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 6px; padding: 10px 13px; font-family: 'Share Tech Mono', monospace; font-size: 0.88rem; color: var(--green); outline: none; transition: border-color 0.2s; }
+  .flag-input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,229,255,0.13); }
+  .flag-input::placeholder { color: var(--muted); }
+  .submit-btn { background: linear-gradient(135deg, #005577, #003344); border: 1px solid var(--accent); color: var(--accent); padding: 10px 18px; border-radius: 6px; font-family: 'Orbitron', monospace; font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; white-space: nowrap; }
+  .submit-btn:hover { background: linear-gradient(135deg, #0077aa, #004466); box-shadow: 0 0 14px rgba(0,229,255,0.25); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .feedback { margin-top: 9px; font-family: 'Share Tech Mono', monospace; font-size: 0.82rem; padding: 7px 11px; border-radius: 4px; display: none; }
+  .feedback.correct { display: block; background: rgba(0,255,136,0.08); border: 1px solid var(--green); color: var(--green); }
+  .feedback.wrong { display: block; background: rgba(255,58,92,0.08); border: 1px solid var(--red); color: var(--red); }
+
+  /* Stats */
+  .scoreboard-section { margin-top: 40px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 22px; }
+  .section-title { font-family: 'Orbitron', monospace; font-size: 0.8rem; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat-box { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 14px; text-align: center; }
+  .stat-value { font-family: 'Orbitron', monospace; font-size: 1.7rem; font-weight: 900; color: var(--accent); margin-bottom: 3px; }
+  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Fireworks */
+  .firework { position: fixed; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 300; animation: explode 1s ease-out forwards; }
+  @keyframes explode { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0} }
+
+  /* Saving indicator */
+  .saving-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; margin-left: 4px; transition: background 0.3s; }
+  .saving-dot.saving { background: var(--yellow); animation: pulse 0.5s ease infinite alternate; }
+  .saving-dot.saved { background: var(--green); }
+  @keyframes pulse { from{opacity:0.5} to{opacity:1} }
+
+  @media(max-width:600px) {
+    header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .challenges-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">CYBER<span>LAB</span></div>
+    <div class="login-subtitle">CTF · KIBERDROŠŠIBA</div>
+    <div class="login-field">
+      <label class="login-label">Vārds / Uzvārds</label>
+      <input class="login-input" id="loginName" type="text" placeholder="Jānis Bērziņš" autocomplete="off" />
+    </div>
+    <div class="login-field">
+      <label class="login-label">Piekļuves kods</label>
+      <input class="login-input" id="loginCode" type="password" placeholder="••••••••" autocomplete="off" />
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">PIESLĒGTIES →</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-note">Piekļuves kodu izsniedz pasniedzējs.<br>Jūsu progress tiks saglabāts automātiski.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="logo">CYBER<span>LAB</span> CTF</div>
+  <div class="header-right">
+    <div class="user-pill">👤 <strong id="headerName">—</strong> <span class="saving-dot" id="savingDot"></span></div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressBar" style="width:0%"></div></div>
+    <div class="score-display">⬡ <span id="scoreDisplay">0</span></div>
+    <button class="logout-btn" onclick="doLogout()">IZIET</button>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="container" id="mainApp" style="display:none">
+  <div class="intro-banner">
+    <div class="intro-icon">🛡️</div>
+    <div class="intro-text">
+      <h2>UZDEVUMA INSTRUKCIJA</h2>
+      <p>Atrodiet <strong style="color:var(--accent)">FLAG{...}</strong> formāta kodu katrā uzdevumā. Izmantojiet norādītos rīkus un resursus. Padoms samazina punktus par 40%. Laiks: <strong style="color:var(--yellow)">3 stundas</strong>. Progress tiek saglabāts automātiski.</p>
+    </div>
+  </div>
+
+  <div class="category-tabs">
+    <div class="tab active" onclick="filterCategory('all',this)">VISI</div>
+    <div class="tab" onclick="filterCategory('ievads',this)">🔐 Ievads</div>
+    <div class="tab" onclick="filterCategory('datu',this)">🗄️ Datu aizsardzība</div>
+    <div class="tab" onclick="filterCategory('normativ',this)">📋 Normatīvie akti</div>
+    <div class="tab" onclick="filterCategory('draudi',this)">⚠️ Draudi</div>
+    <div class="tab" onclick="filterCategory('info',this)">🔒 Informācijas drošība</div>
+  </div>
+
+  <div class="challenges-grid" id="challengesGrid"></div>
+
+  <div class="scoreboard-section">
+    <div class="section-title">📊 JŪSU PROGRESS</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-value" id="statSolved">0</div><div class="stat-label">Atrisināti</div></div>
+      <div class="stat-box"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Kopā</div></div>
+      <div class="stat-box"><div class="stat-value" id="statPts">0</div><div class="stat-label">Punkti</div></div>
+      <div class="stat-box"><div class="stat-value" id="statPct">0%</div><div class="stat-label">Pabeigts</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL ═══════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-icon" id="mIcon"></div>
+      <div class="modal-title-wrap">
+        <div class="modal-category" id="mCategory"></div>
+        <div class="modal-title" id="mTitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="task-description" id="mDesc"></div>
+      <div class="task-scenario" id="mScenario"></div>
+      <div id="mContent"></div>
+      <div class="hint-section">
+        <button class="hint-toggle" onclick="toggleHint()">💡 PARĀDĪT PADOMU (−40% pts)</button>
+        <div class="hint-content" id="hintContent"></div>
+      </div>
+      <div class="flag-input-row">
+        <input class="flag-input" id="flagInput" type="text" placeholder="FLAG{ievadi_šeit}" />
+        <button class="submit-btn" id="submitBtn" onclick="submitFlag()">IESNIEGT</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONFIG — aizpilda pēc Supabase izveides
+// ═══════════════════════════════════════
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const ACCESS_CODE = 'YOUR_ACCESS_CODE'; // kods ko dodiet studentiem
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════
+// CHALLENGES DATA
+// ═══════════════════════════════════════
+const challenges = [
+  // IEVADS (6)
+  { id:1, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🔐", title:"CIA Triāde — Konfidencialitāte", desc:"Pamata drošības modelis — saproti, kura komponente tiek apdraudēta.", scenario:"<strong>SCENĀRIJS:</strong> Darbinieks saņem e-pastu no 'IT nodaļas', kurā lūdz nosūtīt paroli. Kura CIA triādes komponente tiek apdraudēta? Ievadiet vienu burtu (C, I vai A).", content:`<div class="code-block">CIA Triāde:
+C = Confidentiality (Konfidencialitāte)
+    → informācija nav pieejama nepilnvarotiem
+I = Integrity      (Integritāte)
+    → informācija nav mainīta bez atļaujas
+A = Availability   (Pieejamība)
+    → sistēma ir pieejama pilnvarotiem
+
+Scenārijs: paroles atklāšana → ?
+Karodziņa formāts: FLAG{X}</div>`, hint:"Paroles atklāšana nozīmē, ka nepilnvarota persona var piekļūt informācijai. Tas ir Confidentiality — C.", flag:"FLAG{C}", difficulty:"easy", points:20 },
+  { id:2, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🔑", title:"Base64 Dekodēšana", desc:"Base64 ir kodēšana, nevis šifrēšana. Atšifrē paslēpto ziņu.", scenario:"<strong>SCENĀRIJS:</strong> Aizdomīgā e-pastā atrasta šī virkne. Dekodē to, lai iegūtu karodziņu.", content:`<div class="code-block">Kodēta virkne:
+RkxBR3tCYXNlNjRfbmF2XzNuY3J5cHRpb259
+
+Rīki:
+→ https://www.base64decode.org/
+→ Terminālī: echo "VIRKNE" | base64 -d</div>`, hint:"Ielieciet virkni base64decode.org un nospiediet Decode.", flag:"FLAG{Base64_nav_3ncryption}", difficulty:"easy", points:20 },
+  { id:3, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🔍", title:"Droša Parole", desc:"Atrodiet paroli, kas atbilst NIST drošas paroles kritērijiem.", scenario:"<strong>SCENĀRIJS:</strong> Drošas paroles prasības: min 12 rakstzīmes, lielie + mazie burti, cipari, simbols. Atrodiet drošo paroli un saskaitiet tās rakstzīmes.", content:`<div class="code-block">Paroles:
+1. parole123          → 9 rakstzīmes
+2. P@55w0rd           → 8 rakstzīmes
+3. qwerty!            → 7 rakstzīmes
+4. Kiberdro$iba2024!  → ? rakstzīmes ✓
+5. 111111111111       → 12, bet tikai cipari
+
+Saskaitiet rakstzīmes parolei nr.4
+Karodziņa formāts: FLAG{skaits}</div>`, hint:"K-i-b-e-r-d-r-o-$-i-b-a-2-0-2-4-! — saskaitiet katru rakstzīmi.", flag:"FLAG{17}", difficulty:"easy", points:20 },
+  { id:4, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🛡️", title:"Autentifikācijas Faktori", desc:"Pirkstu nospiedums — kādai autentifikācijas kategorijai tas pieder?", scenario:"<strong>SCENĀRIJS:</strong> Banka ievieš biometrisko autentifikāciju. Kādai no trim kategorijām pieder pirkstu nospiedums?", content:`<div class="code-block">Autentifikācijas faktoru kategorijas:
+1. Something you KNOW  → parole, PIN
+2. Something you HAVE  → telefons, token
+3. Something you ARE   → pirkstu nospiedums
+
+Karodziņa formāts: FLAG{something_you_X}</div>`, hint:"Pirkstu nospiedums ir daļa no jūsu ķermeņa — 'something you are'.", flag:"FLAG{something_you_are}", difficulty:"easy", points:20 },
+  { id:5, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🔄", title:"Caesar Šifrs", desc:"Viens no vecākajiem šifriem — nobīde par fiksētu skaitu.", scenario:"<strong>SCENĀRIJS:</strong> Šifrēta ziņa ar nobīdi 3 (katrs burts → 3 atpakaļ). Dekodē: <code style='color:var(--accent)'>IODJ{fdhvdu}</code>", content:`<div class="code-block">Caesar šifrs, nobīde -3:
+I→F, O→L, D→A, J→G = "FLAG"
+f→c, d→a, h→e, v→s, d→a, u→r
+
+Rīks: https://cryptii.com/pipes/caesar-cipher
+Karodziņa formāts: FLAG{vards}</div>`, hint:"Iegūst FLAG{caesar}. Rīkā ievadiet IODJ{fdhvdu} un iestatiet nobīdi uz -3.", flag:"FLAG{caesar}", difficulty:"medium", points:30 },
+  { id:6, category:"ievads", categoryLabel:"Ievads kiberdroššibā", icon:"🌐", title:"HTTP vs HTTPS", desc:"Saproti atšķirību starp šifrētu un nešifrētu savienojumu.", scenario:"<strong>SCENĀRIJS:</strong> Lietotājs publiskā Wi-Fi apmeklē banku ar 'http://banka.lv'. Kādam protokolam VAJADZĒTU būt?", content:`<div class="code-block">HTTP  → dati kā teksts (redzams!)
+HTTPS → šifrēts ar TLS/SSL
+
+Publiskajā Wi-Fi uzbrucējs var
+noklausīties HTTP trafiku.
+
+Karodziņa formāts: FLAG{PROTOKOLS}</div>`, hint:"Drošs savienojums ar TLS/SSL ir HTTPS.", flag:"FLAG{HTTPS}", difficulty:"easy", points:20 },
+
+  // DATU DROŠĪBA (5)
+  { id:7, category:"datu", categoryLabel:"IT Datu drošības pamati", icon:"🗄️", title:"GDPR — Nolūka Ierobežojums", desc:"GDPR nosaka, kādiem nolūkiem drīkst izmantot savāktos datus.", scenario:"<strong>SCENĀRIJS:</strong> SIA savāc e-pastus rēķiniem, bet pārdod tos reklāmai. Kura GDPR panta princips tiek pārkāpts?", content:`<div class="code-block">GDPR Pants 5 — Apstrādes principi:
+(1)(b) Nolūka ierobežojums
+       → datus drīkst izmantot TIKAI
+         tam nolūkam, kādam savākti!
+
+Karodziņa formāts: FLAG{pants_X}</div>`, hint:"Rēķini ≠ reklāma. Nolūka ierobežojums ir Pants 5.", flag:"FLAG{pants_5}", difficulty:"medium", points:30 },
+  { id:8, category:"datu", categoryLabel:"IT Datu drošības pamati", icon:"🔒", title:"Hash Algoritma Identifikācija", desc:"Identificējiet hash algoritmu pēc tā izskata.", scenario:"<strong>SCENĀRIJS:</strong> Datubāzē: <code style='color:var(--green)'>$2b$12$LQv3c1yqBWVHxkd0LHAkCO</code>. Kāds algoritms?", content:`<div class="code-block">Algoritmu pazīmes:
+MD5    → 32 hex rakstzīmes
+SHA1   → 40 hex rakstzīmes
+SHA256 → 64 hex rakstzīmes
+bcrypt → sākas ar $2b$ vai $2a$
+
+Karodziņa formāts: FLAG{nosaukums}</div>`, hint:"$2b$ sākums ir bcrypt algoritma paraksts.", flag:"FLAG{bcrypt}", difficulty:"medium", points:30 },
+  { id:9, category:"datu", categoryLabel:"IT Datu drošības pamati", icon:"💾", title:"3-2-1 Backup Stratēģija", desc:"Nozares standarta datu dublēšanas noteikums.", scenario:"<strong>SCENĀRIJS:</strong> Cik kopijas paredz 3-2-1 backup stratēģija kopā?", content:`<div class="code-block">3-2-1 Backup stratēģija:
+3 → ??? kopijas kopā
+2 → dažādi mediji (HDD, mākoņi...)
+1 → kopija ārpus atrašanās vietas
+
+Karodziņa formāts: FLAG{X_kopijas}</div>`, hint:"3-2-1: 3 kopijas, 2 medijos, 1 ārpus. Pirmais skaitlis ir 3.", flag:"FLAG{3_kopijas}", difficulty:"easy", points:20 },
+  { id:10, category:"datu", categoryLabel:"IT Datu drošības pamati", icon:"🔐", title:"Asimetriskā Šifrēšana", desc:"Alice šifrē ar Boba publisko atslēgu. Kāds šifrēšanas veids?", scenario:"<strong>SCENĀRIJS:</strong> Alice izmanto Boba publisko atslēgu, lai šifrētu e-pastu. Kāds šifrēšanas veids?", content:`<div class="code-block">Simetriskā  → 1 atslēga abiem virzieniem
+Asimetriskā → publiskā atslēga šifrē,
+              privātā atšifrē (RSA, ECC)
+
+Karodziņa formāts: FLAG{veids}</div>`, hint:"Publiskās/privātās atslēgas pāris = asimetriskā šifrēšana.", flag:"FLAG{asimetriska}", difficulty:"medium", points:30 },
+  { id:11, category:"datu", categoryLabel:"IT Datu drošības pamati", icon:"📊", title:"Īpaši Jutīgie Personas Dati", desc:"GDPR klasificē datus pēc jutīguma. Nosakiet kategoriju.", scenario:"<strong>SCENĀRIJS:</strong> Klīnika glabā pacientu diagnozes. Kāda GDPR datu kategorija?", content:`<div class="code-block">GDPR Pants 9 — Īpaši jutīgie dati:
+→ veselības dati        ← šis!
+→ biometriskā info
+→ reliģiskā pārliecība
+→ seksuālā orientācija
+
+Karodziņa formāts: FLAG{kategorija}
+(lv valodā, bez garumzīmēm)</div>`, hint:"Veselības dati ir skaidri GDPR 9. pants — īpaši jutīgie dati.", flag:"FLAG{ipaši_jutīgi}", difficulty:"easy", points:20 },
+
+  // NORMATĪVIE AKTI (5)
+  { id:12, category:"normativ", categoryLabel:"Kiberdroššibas normatīvie akti", icon:"📋", title:"NIS2 — Paziņošanas Termiņš", desc:"NIS2 direktīva nosaka stingrus termiņus incidentu paziņošanai.", scenario:"<strong>SCENĀRIJS:</strong> Veselības uzņēmums cieš no ransomware. Cik stundās NIS2 paredz sākotnējo brīdinājumu?", content:`<div class="code-block">NIS2 Direktīva — Pants 23:
+Sākotnējais brīdinājums: ?? stundas
+Starpposma ziņojums:     72 stundas
+Noslēguma ziņojums:       1 mēnesis
+
+Avots: https://eur-lex.europa.eu
+Meklēt: "NIS2 2022/2555 Article 23"
+
+Karodziņa formāts: FLAG{XX_stundas}</div>`, hint:"Sākotnējais NIS2 brīdinājums ir 24 stundas.", flag:"FLAG{24_stundas}", difficulty:"medium", points:30 },
+  { id:13, category:"normativ", categoryLabel:"Kiberdroššibas normatīvie akti", icon:"⚖️", title:"ISO 27001:2022 Annex A Tēmas", desc:"ISO 27001:2022 reorganizēja kontroles jaunās tematiskās grupās.", scenario:"<strong>SCENĀRIJS:</strong> Cik tematiskās grupas ir ISO 27001:2022 Annex A?", content:`<div class="code-block">ISO 27001:2022 Annex A:
+→ Organizatoriskās kontroles
+→ Personāla kontroles
+→ Fiziskās kontroles
+→ Tehnoloģiskās kontroles
+
+Kopā cik tēmas?
+Karodziņa formāts: FLAG{X_temas}</div>`, hint:"Ir tieši 4 tematiskās grupas jaunajā ISO 27001:2022.", flag:"FLAG{4_temas}", difficulty:"medium", points:30 },
+  { id:14, category:"normativ", categoryLabel:"Kiberdroššibas normatīvie akti", icon:"🇪🇺", title:"GDPR — Maksimālais Naudas Sods", desc:"GDPR paredz nopietnus naudas sodus. Kāds ir maksimālais % no apgrozījuma?", scenario:"<strong>SCENĀRIJS:</strong> Liels uzņēmums rupji pārkāpj GDPR. Kāds maksimālais % no gada apgrozījuma?", content:`<div class="code-block">GDPR Pants 83(5) — Smagāki pārkāpumi:
+→ līdz 20 milj. EUR
+→ vai līdz ??% no gada apgrozījuma
+
+Avots: https://gdpr.eu/fines/
+
+Karodziņa formāts: FLAG{X_procenti}</div>`, hint:"GDPR smagākiem pārkāpumiem — līdz 4% no globālā gada apgrozījuma.", flag:"FLAG{4_procenti}", difficulty:"medium", points:30 },
+  { id:15, category:"normativ", categoryLabel:"Kiberdroššibas normatīvie akti", icon:"🏛️", title:"Latvijas CERT", desc:"Kura iestāde Latvijā atbild par kiberdroššibas incidentiem?", scenario:"<strong>SCENĀRIJS:</strong> Latvijas uzņēmums vēlas ziņot par kiberuzbrukumu. Kāds ir galvenās iestādes saīsinājums?", content:`<div class="code-block">Meklēt: cert.lv
+
+Latvijas galvenā kiberdroššibas
+reaģēšanas iestāde (4 burti):
+
+Karodziņa formāts: FLAG{SAĪS}</div>`, hint:"Latvijas galvenā kiberdroššibas iestāde ir CERT — cert.lv.", flag:"FLAG{CERT}", difficulty:"easy", points:20 },
+  { id:16, category:"normativ", categoryLabel:"Kiberdroššibas normatīvie akti", icon:"📜", title:"NIS2 — Enerģētikas Kategorija", desc:"NIS2 iedala organizācijas 'būtiskās' un 'svarīgās'.", scenario:"<strong>SCENĀRIJS:</strong> Kādā NIS2 kategorijā ietilpst enerģētikas uzņēmumi? (butiskas vai svarīgas)", content:`<div class="code-block">NIS2 Pielikums I — Būtiskās nozares:
+→ Enerģētika ← šis!
+→ Transports
+→ Banka, veselība, ūdens
+
+NIS2 Pielikums II — Svarīgās nozares:
+→ Pasts, pārtika, ķīmija...
+
+Karodziņa formāts: FLAG{kategorija}</div>`, hint:"Enerģētika ir Pielikumā I — Būtiskās nozares.", flag:"FLAG{butiskas}", difficulty:"easy", points:20 },
+
+  // DRAUDI (6)
+  { id:17, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"⚠️", title:"Pikšķerēšanas Sarkanās Pazīmes", desc:"Saskaitiet drošības brīdinājuma pazīmes e-pastā.", scenario:"<strong>SCENĀRIJS:</strong> Saskaitiet, cik drošības sarkano karodziņu ir šajā e-pastā.", content:`<div class="code-block">NO: security@paypa1.com
+TEMATS: ⚠️ STEIDZAMI: Konts tiks bloķēts!
+
+Cienījamais Klient,
+Apstipriniet identitāti 24h laikā —
+pretējā gadījumā konts tiks DZĒSTS!
+→ http://paypa1-secure.ru/verify
+
+PayPal Droššibas Komanda</div>`, hint:"1) paypa1≠paypal, 2) .ru URL, 3) draudi, 4) steidzamības spiediens, 5) drukas kļūdas = 5 pazīmes.", flag:"FLAG{5}", difficulty:"easy", points:20 },
+  { id:18, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"🦠", title:"Ransomware Identifikācija", desc:"Identificējiet ļaunprogrammatūras veidu pēc uzvedības.", scenario:"<strong>SCENĀRIJS:</strong> Faili tiek šifrēti, parādās .locked paplašinājums un Bitcoin pieprasījums. Kāds veids?", content:`<div class="code-block">Ļaunprogrammatūru klasifikācija:
+Virus      → pašreproducējas
+Worm       → izplatās tīklā
+Trojan     → slēpts citā programmā
+Ransomware → šifrē + izpirkuma maksa
+Spyware    → novēro lietotāju
+
+Karodziņa formāts: FLAG{nosaukums}</div>`, hint:"Šifrēšana + izpirkuma maksa = ransomware.", flag:"FLAG{ransomware}", difficulty:"easy", points:20 },
+  { id:19, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"🌐", title:"MITRE ATT&CK — Persistence", desc:"Atrodiet taktikas ID MITRE ATT&CK ietvarā.", scenario:"<strong>SCENĀRIJS:</strong> Uzbrucējs izveido Scheduled Tasks pastāvīgai piekļuvei. Kāds taktikas ID?", content:`<div class="code-block">Apmeklējiet: https://attack.mitre.org
+→ Tactics → Persistence
+
+Taktika ID formāts: TA00XX
+Karodziņa formāts: FLAG{TA00XX}</div>`, hint:"Persistence taktika MITRE ATT&CK ir TA0003.", flag:"FLAG{TA0003}", difficulty:"hard", points:50 },
+  { id:20, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"💉", title:"SQL Injekcija", desc:"Saprotiet SQL injekcijas principu.", scenario:"<strong>SCENĀRIJS:</strong> Pieteikšanās laukā ievada <code style='color:var(--accent)'>admin'--</code>. Cik simboli ir SQL komentāra operatorā '--'?", content:`<div class="code-block">SQL vaicājums ar injekciju:
+WHERE username='admin'--' AND password='x'
+
+'--' = SQL komentārs
+→ viss pēc tā tiek ignorēts
+→ paroles pārbaude apieta!
+
+Cik rakstzīmes ir '--'?
+Karodziņa formāts: FLAG{X}</div>`, hint:"'--' sastāv no diviem defisiem. Atbilde: 2.", flag:"FLAG{2}", difficulty:"medium", points:30 },
+  { id:21, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"📡", title:"DDoS Uzbrukuma Veids", desc:"Klasificējiet DDoS uzbrukumu pēc apraksta.", scenario:"<strong>SCENĀRIJS:</strong> Uzbrucējs sūta miljoniem DNS pieprasījumu (DNS amplification). Kāds DDoS veids? (volumetric, protocol vai application)", content:`<div class="code-block">DDoS veidi:
+Volumetric  → pārpludina joslas platumu
+             (DNS amplif., UDP flood)
+Protocol    → iztērē servera resursus
+             (SYN flood)
+Application → HTTP flood, Slowloris
+
+DNS amplification → ?
+Karodziņa formāts: FLAG{veids}</div>`, hint:"DNS amplification pārpludina joslas platumu — volumetric uzbrukums.", flag:"FLAG{volumetric}", difficulty:"medium", points:30 },
+  { id:22, category:"draudi", categoryLabel:"Kiberdraudi un uzbrukumi", icon:"🎭", title:"Kill Chain — Exploitation Posms", desc:"Cyber Kill Chain modelis apraksta uzbrukuma posmus.", scenario:"<strong>SCENĀRIJS:</strong> Upuris atver ļaunprātīgu pielikumu un ievainojamība tiek izmantota. Kāds Kill Chain posms?", content:`<div class="code-block">Cyber Kill Chain posmi:
+1. Reconnaissance  → izlūkošana
+2. Weaponization   → ierocis gatavs
+3. Delivery        → e-pasts nosūtīts
+4. Exploitation    → ievainojamība izmantota ←
+5. Installation    → instalēšana
+6. C2 Command      → kontrole
+7. Actions         → mērķis sasniegts
+
+Karodziņa formāts: FLAG{posma_nosaukums}</div>`, hint:"Kad upuris atver pielikumu un ievainojamība tiek izmantota — Exploitation.", flag:"FLAG{Exploitation}", difficulty:"medium", points:30 },
+
+  // INFORMĀCIJAS DROŠĪBA (6)
+  { id:23, category:"info", categoryLabel:"Informācijas drošība", icon:"🔒", title:"Ugunsmūra Kļūdainais Noteikums", desc:"Atrodiet drošības nepilnību ugunsmūra konfigurācijā.", scenario:"<strong>SCENĀRIJS:</strong> Kura noteikuma numurs rada drošības risku?", content:`<div class="code-block">#  AVOTS     MĒRĶIS    PORTS  DARBĪBA
+1. INTERNAL  ANY       443    ALLOW
+2. INTERNAL  ANY       80     ALLOW
+3. ANY       INTERNAL  22     ALLOW ← ?
+4. INTERNAL  DNS       53     ALLOW
+5. ANY       ANY       ANY    DENY
+
+Ports 22 = SSH
+Karodziņa formāts: FLAG{nr}</div>`, hint:"#3 ļauj JEBKURAM pieslēgties SSH (ports 22) — risks!", flag:"FLAG{3}", difficulty:"medium", points:30 },
+  { id:24, category:"info", categoryLabel:"Informācijas drošība", icon:"📱", title:"Sociālā Inženierija — Aizsardzība", desc:"Pareizā atbilde uz sociālās inženierijas uzbrukumu.", scenario:"<strong>SCENĀRIJS:</strong> Zvans: 'IT atbalsts, steidzami vajag jūsu paroli.' Kāda PAREIZĀ darbība? (A/B/C/D)", content:`<div class="code-block">A) Sniegt paroli — IT ir uzticams
+B) Pārbaudīt caur uzņēmuma
+   oficiālo IT kontaktu         ← ?
+C) Mainīt paroli un sniegt jauno
+D) Sniegt paroli pa e-pastu
+
+Karodziņa formāts: FLAG{X}</div>`, hint:"IT NEKAD nepieprasa paroli. Pārbaudīt caur oficiālu kanālu — B.", flag:"FLAG{B}", difficulty:"easy", points:20 },
+  { id:25, category:"info", categoryLabel:"Informācijas drošība", icon:"🏗️", title:"Incidentu Reaģēšanas Secība", desc:"NIST SP 800-61 incidentu reaģēšanas posmu secība.", scenario:"<strong>SCENĀRIJS:</strong> Pēc uzbrukuma atklāšanas (Detection) — kāds ir nākamais NIST posms? (pirmais burts)", content:`<div class="code-block">NIST SP 800-61 posmi:
+F → Sagatavošanās    (Preparation)
+D → Atklāšana        (Detection)
+? → Ierobežošana     (Containment) ← nākamais
+B → Izskaušana       (Eradication)
+A → Atjaunošana      (Recovery)
+E → Mācības          (Lessons Learned)
+
+Karodziņa formāts: FLAG{X}</div>`, hint:"Pēc Detection nāk Containment — ierobežot uzbrukumu. Atbilde: C.", flag:"FLAG{C}", difficulty:"medium", points:30 },
+  { id:26, category:"info", categoryLabel:"Informācijas drošība", icon:"🔑", title:"2FA Faktoru Skaits", desc:"Cik autentifikācijas faktori tiek izmantoti?", scenario:"<strong>SCENĀRIJS:</strong> Darbinieks piesakās ar paroli + SMS kodu. Cik faktori?", content:`<div class="code-block">Faktori:
+1. Parole  → something you KNOW
+2. SMS     → something you HAVE
+
+Kopā cik dažādi faktori?
+Karodziņa formāts: FLAG{X}</div>`, hint:"Parole + SMS = 2 dažādi faktori = 2FA.", flag:"FLAG{2}", difficulty:"easy", points:20 },
+  { id:27, category:"info", categoryLabel:"Informācijas drošība", icon:"🗂️", title:"Informācijas Klasifikācija", desc:"Nosakiet pareizo klasifikācijas līmeni.", scenario:"<strong>SCENĀRIJS:</strong> Uzņēmuma nepublicēts finanšu pārskats. Kāds klasifikācijas līmenis? (publics/iekšējs/konfidencials/slepens)", content:`<div class="code-block">Klasifikācijas līmeņi:
+Publisks      → brīvi publicējams
+Iekšējs       → tikai darbinieki
+Konfidenciāls → ierobežota piekļuve ← ?
+Slepens       → augstākā aizsardzība
+
+Karodziņa formāts: FLAG{limenis}</div>`, hint:"Nepublicēts finanšu pārskats — konfidenciāls (nevar publicēt, bet nav slepens).", flag:"FLAG{konfidencials}", difficulty:"medium", points:30 },
+  { id:28, category:"info", categoryLabel:"Informācijas drošība", icon:"🧱", title:"Zero Trust Princips", desc:"Zero Trust arhitektūras galvenais moto angļu valodā.", scenario:"<strong>SCENĀRIJS:</strong> Uzņēmums ievieš Zero Trust. Kāds ir tās galvenais princips? (3 vārdi angliski, apakšsvītras vietā atstarpes)", content:`<div class="code-block">Zero Trust vs tradicionālā pieeja:
+
+Tradicionālā:
+→ "uzticies iekšējiem, bloķē āros"
+
+Zero Trust:
+→ "never trust, always verify"
+→ KATRS pieprasījums tiek pārbaudīts
+→ Minimālās privileģijas princips
+
+Karodziņa formāts: FLAG{never_trust_always_verify}</div>`, hint:"Zero Trust moto: 'Never Trust, Always Verify'.", flag:"FLAG{never_trust_always_verify}", difficulty:"hard", points:50 },
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let currentUser = null;
+let solved = new Set();
+let totalScore = 0;
+let currentChallenge = null;
+let hintUsed = false;
+let currentFilter = 'all';
+
+// ═══════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════
+async function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  const code = document.getElementById('loginCode').value.trim();
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginError');
+
+  if (!name) { showLoginError('Ievadiet savu vārdu!'); return; }
+  if (!code)  { showLoginError('Ievadiet piekļuves kodu!'); return; }
+  if (code !== ACCESS_CODE) { showLoginError('Nepareizs piekļuves kods!'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'PIESLĒDZAS...';
+  err.style.display = 'none';
+
+  try {
+    // Upsert student record
+    const { data, error } = await sb
+      .from('students')
+      .upsert({ name: name, last_seen: new Date().toISOString() }, { onConflict: 'name' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    currentUser = data;
+
+    // Load existing progress
+    const { data: progress } = await sb
+      .from('progress')
+      .select('*')
+      .eq('student_name', name);
+
+    if (progress) {
+      progress.forEach(p => {
+        solved.add(p.challenge_id);
+        totalScore += p.points_earned;
+      });
+    }
+
+    // Enter app
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('headerName').textContent = name;
+    renderChallenges('all');
+    updateStats();
+
+  } catch (e) {
+    showLoginError('Kļūda: ' + (e.message || 'Pārbaudi interneta savienojumu'));
+    btn.disabled = false;
+    btn.textContent = 'PIESLĒGTIES →';
+  }
+}
+
+function showLoginError(msg) {
+  const err = document.getElementById('loginError');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+function doLogout() {
+  currentUser = null;
+  solved = new Set();
+  totalScore = 0;
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginCode').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = 'PIESLĒGTIES →';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function renderChallenges(filter) {
+  const grid = document.getElementById('challengesGrid');
+  const list = filter === 'all' ? challenges : challenges.filter(c => c.category === filter);
+  grid.innerHTML = list.map(ch => {
+    const isSolved = solved.has(ch.id);
+    const diffClass = ch.points <= 20 ? 'easy' : ch.points <= 30 ? 'medium' : 'hard';
+    const diffCount = ch.points <= 20 ? 1 : ch.points <= 30 ? 2 : 3;
+    const dots = [1,2,3].map(i => `<div class="diff-dot ${i<=diffCount?'active '+diffClass:''}"></div>`).join('');
+    return `<div class="challenge-card ${isSolved?'solved':''}" onclick="openChallenge(${ch.id})">
+      <div class="card-header">
+        <div class="card-icon">${ch.icon}</div>
+        <div class="card-meta">
+          <div class="card-category">${ch.categoryLabel}</div>
+          <div class="card-title">${ch.title}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-desc">${ch.desc}</div>
+        <div class="card-footer">
+          <div class="difficulty">${dots}</div>
+          <div class="points-badge">${isSolved?'✓ ':''} ${ch.points} pts</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('statTotal').textContent = challenges.length;
+  updateStats();
+}
+
+function filterCategory(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderChallenges(cat);
+}
+
+// ═══════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════
+function openChallenge(id) {
+  currentChallenge = challenges.find(c => c.id === id);
+  hintUsed = false;
+  document.getElementById('mIcon').textContent = currentChallenge.icon;
+  document.getElementById('mCategory').textContent = currentChallenge.categoryLabel;
+  document.getElementById('mTitle').textContent = currentChallenge.title;
+  document.getElementById('mDesc').textContent = currentChallenge.desc;
+  document.getElementById('mScenario').innerHTML = currentChallenge.scenario;
+  document.getElementById('mContent').innerHTML = currentChallenge.content;
+  document.getElementById('hintContent').textContent = currentChallenge.hint;
+  document.getElementById('hintContent').classList.remove('visible');
+  document.getElementById('flagInput').value = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('submitBtn').disabled = solved.has(currentChallenge.id);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+function toggleHint() {
+  const h = document.getElementById('hintContent');
+  if (!h.classList.contains('visible')) { h.classList.add('visible'); hintUsed = true; }
+}
+
+// ═══════════════════════════════════════
+// SUBMIT FLAG
+// ═══════════════════════════════════════
+async function submitFlag() {
+  const input = document.getElementById('flagInput').value.trim();
+  const fb = document.getElementById('feedback');
+  const btn = document.getElementById('submitBtn');
+  if (!input) return;
+
+  if (input.toUpperCase() === currentChallenge.flag.toUpperCase()) {
+    if (!solved.has(currentChallenge.id)) {
+      const penalty = Math.floor(currentChallenge.points * 0.4);
+      const pts = hintUsed ? Math.max(currentChallenge.points - penalty, 5) : currentChallenge.points;
+
+      solved.add(currentChallenge.id);
+      totalScore += pts;
+
+      fb.className = 'feedback correct';
+      fb.textContent = `✓ PAREIZI! +${pts} punkti${hintUsed ? ` (−${penalty} par padomu)` : ''}`;
+      btn.disabled = true;
+
+      updateStats();
+      renderChallenges(currentFilter);
+      celebrate();
+      await saveProgress(currentChallenge.id, pts);
+      setTimeout(closeModal, 2000);
+    } else {
+      fb.className = 'feedback correct';
+      fb.textContent = '✓ Šis uzdevums jau ir atrisināts!';
+    }
+  } else {
+    fb.className = 'feedback wrong';
+    fb.textContent = '✗ Nepareizi. Pārbaudi formātu: FLAG{...}';
+  }
+}
+
+// ═══════════════════════════════════════
+// SUPABASE SAVE
+// ═══════════════════════════════════════
+async function saveProgress(challengeId, pts) {
+  const dot = document.getElementById('savingDot');
+  dot.className = 'saving-dot saving';
+  try {
+    await sb.from('progress').upsert({
+      student_name: currentUser.name,
+      challenge_id: challengeId,
+      points_earned: pts,
+      solved_at: new Date().toISOString(),
+      hint_used: hintUsed
+    }, { onConflict: 'student_name,challenge_id' });
+    // Update total score on student record
+    await sb.from('students').update({ total_score: totalScore, last_seen: new Date().toISOString() }).eq('name', currentUser.name);
+    dot.className = 'saving-dot saved';
+    setTimeout(() => dot.className = 'saving-dot', 3000);
+  } catch (e) {
+    dot.className = 'saving-dot';
+    console.error('Save failed:', e);
+  }
+}
+
+// ═══════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════
+function updateStats() {
+  const pct = Math.round((solved.size / challenges.length) * 100);
+  document.getElementById('scoreDisplay').textContent = totalScore;
+  document.getElementById('statSolved').textContent = solved.size;
+  document.getElementById('statPts').textContent = totalScore;
+  document.getElementById('statPct').textContent = pct + '%';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function celebrate() {
+  const colors = ['#00e5ff','#00ff88','#ffd600','#ff3a5c'];
+  for (let i = 0; i < 22; i++) {
+    const f = document.createElement('div');
+    f.className = 'firework';
+    f.style.cssText = `left:${35+Math.random()*30}%;top:${25+Math.random()*25}%;background:${colors[i%4]};--tx:${(Math.random()-.5)*220}px;--ty:${(Math.random()-.5)*220}px;animation-delay:${Math.random()*.35}s`;
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 1300);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('loginScreen').style.display !== 'none') doLogin();
+    else submitFlag();
+  }
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
